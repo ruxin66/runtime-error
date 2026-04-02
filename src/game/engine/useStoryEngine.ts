@@ -10,6 +10,7 @@ import {
   type StoryCondition,
   type StoryEffect,
   type StoryChoice,
+  type StoryHistoryEntry,
   type StorySnapshot,
   type StoryState,
   type StoryTransition,
@@ -43,6 +44,35 @@ const resolveChoiceText = (choice: StoryChoice, state: StoryState): StoryChoice 
   ...choice,
   text: resolveTemplateString(choice.text, state),
 });
+
+const resolveSpeaker = (
+  chapter: StoryChapter,
+  node: StoryNode,
+  state: StoryState,
+): { name: string; title?: string; profile?: CharacterProfile } => {
+  if (!node.speakerId) {
+    return { name: "旁白" };
+  }
+
+  const profile = chapter.characters[node.speakerId];
+  if (!profile) {
+    return { name: "旁白" };
+  }
+
+  if (node.speakerId === "protagonist") {
+    return {
+      name: state.protagonist.displayName,
+      title: state.protagonist.title,
+      profile,
+    };
+  }
+
+  return {
+    name: profile.name,
+    title: profile.title,
+    profile,
+  };
+};
 
 const matchesCondition = (
   condition: StoryCondition,
@@ -141,6 +171,7 @@ const validateChapter = (chapter: StoryChapter) => {
 export const useStoryEngine = (chapter: StoryChapter) => {
   const [currentNodeId, setCurrentNodeId] = useState(chapter.startId);
   const [state, setState] = useState<StoryState>(() => cloneState(chapter.initialState));
+  const [history, setHistory] = useState<StoryHistoryEntry[]>([]);
   const appliedEnterEffectsRef = useRef<string | null>(null);
 
   useMemo(() => validateChapter(chapter), [chapter]);
@@ -149,13 +180,14 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     appliedEnterEffectsRef.current = null;
     setCurrentNodeId(chapter.startId);
     setState(cloneState(chapter.initialState));
+    setHistory([]);
   }, [chapter.id]);
 
   const currentNode = chapter.nodes[currentNodeId];
-  const currentCharacter: CharacterProfile | undefined = currentNode.speakerId
-    ? chapter.characters[currentNode.speakerId]
-    : undefined;
+  const resolvedSpeaker = resolveSpeaker(chapter, currentNode, state);
+  const currentCharacter: CharacterProfile | undefined = resolvedSpeaker.profile;
   const currentBackground: BackgroundProfile = chapter.backgrounds[currentNode.backgroundId];
+  const currentText = resolveText(currentNode.text, state);
   const currentChoices = isChoiceNode(currentNode)
     ? (currentNode.choices.map((choice) => resolveChoiceText(choice, state)) as [
         StoryChoice,
@@ -176,6 +208,24 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     appliedEnterEffectsRef.current = currentNode.id;
     setState((previousState) => applyEffects(previousState, currentNode.enterEffects));
   }, [currentNode]);
+
+  useEffect(() => {
+    const entry: StoryHistoryEntry = {
+      nodeId: currentNode.id,
+      speakerName: resolvedSpeaker.name,
+      speakerTitle: resolvedSpeaker.title,
+      text: currentText,
+    };
+
+    setHistory((previousHistory) => {
+      const lastEntry = previousHistory[previousHistory.length - 1];
+      if (lastEntry?.nodeId === entry.nodeId) {
+        return previousHistory;
+      }
+
+      return [...previousHistory, entry];
+    });
+  }, [currentNode.id, currentText, resolvedSpeaker.name, resolvedSpeaker.title]);
 
   const advance = () => {
     if (!isLinearNode(currentNode)) {
@@ -205,6 +255,7 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     appliedEnterEffectsRef.current = null;
     setCurrentNodeId(chapter.startId);
     setState(cloneState(chapter.initialState, overrides));
+    setHistory([]);
   };
 
   const restore = (snapshot: Pick<StorySnapshot, "currentNodeId" | "state">) => {
@@ -215,6 +266,7 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     appliedEnterEffectsRef.current = null;
     setCurrentNodeId(snapshot.currentNodeId);
     setState(cloneState(snapshot.state));
+    setHistory([]);
     return true;
   };
 
@@ -228,11 +280,14 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     chapter,
     currentNode,
     currentCharacter,
+    currentSpeakerName: resolvedSpeaker.name,
+    currentSpeakerTitle: resolvedSpeaker.title,
     currentBackground,
-    currentText: resolveText(currentNode.text, state),
+    currentText,
     currentChoices,
     protagonist,
     state,
+    history,
     canAdvance: isLinearNode(currentNode),
     hasChoices: isChoiceNode(currentNode),
     isEnding: currentNode.kind === "end",

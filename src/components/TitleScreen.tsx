@@ -1,5 +1,3 @@
-import type { ProtagonistGender } from "../game/types";
-
 interface SaveSlotOption {
   slotId: number;
   label: string;
@@ -8,8 +6,6 @@ interface SaveSlotOption {
 interface TitleScreenProps {
   title: string;
   subtitle: string;
-  selectedGender: ProtagonistGender;
-  onSelectGender: (gender: ProtagonistGender) => void;
   selectedSlot: number;
   slotOptions: SaveSlotOption[];
   hasSave: boolean;
@@ -22,8 +18,6 @@ interface TitleScreenProps {
 export const TitleScreen = ({
   title,
   subtitle,
-  selectedGender,
-  onSelectGender,
   selectedSlot,
   slotOptions,
   hasSave,
@@ -39,25 +33,6 @@ export const TitleScreen = ({
         <p className="eyebrow">Steam Galgame MVP</p>
         <h1>{title}</h1>
         <p className="title-screen__subtitle">{subtitle}</p>
-        <div className="title-screen__selector">
-          <p className="title-screen__selector-label">主角身份</p>
-          <div className="title-screen__selector-actions">
-            <button
-              className={selectedGender === "female" ? "selector-button is-active" : "selector-button"}
-              type="button"
-              onClick={() => onSelectGender("female")}
-            >
-              余闯（她）
-            </button>
-            <button
-              className={selectedGender === "male" ? "selector-button is-active" : "selector-button"}
-              type="button"
-              onClick={() => onSelectGender("male")}
-            >
-              余闯（他）
-            </button>
-          </div>
-        </div>
         <div className="title-screen__selector">
           <p className="title-screen__selector-label">存档位</p>
           <div className="title-screen__selector-actions">

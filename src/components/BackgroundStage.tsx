@@ -6,12 +6,17 @@ interface BackgroundStageProps {
 
 export const BackgroundStage = ({ background }: BackgroundStageProps) => {
   return (
-    <div className="background-stage">
+    <div
+      className="background-stage"
+      aria-label={background.label}
+      title={background.description}
+    >
       <div className="background-stage__glow" />
-      <div className="background-stage__meta">
-        <p className="eyebrow">背景</p>
-        <h2>{background.label}</h2>
-        <p>{background.description}</p>
+      <div className="background-stage__portrait-zone" aria-hidden="true">
+        <div className="background-stage__portrait-frame">
+          <div className="background-stage__portrait-head" />
+          <div className="background-stage__portrait-body" />
+        </div>
       </div>
     </div>
   );

@@ -1,36 +1,37 @@
 import { useEffect, useState } from "react";
+import { ProtagonistSelectScreen } from "./components/ProtagonistSelectScreen";
 import { StoryScreen } from "./components/StoryScreen";
 import { TitleScreen } from "./components/TitleScreen";
 import { useStoryEngine } from "./game/engine/useStoryEngine";
+import { loadReaderSettings, saveReaderSettings } from "./game/preferences";
 import { createProtagonistProfile } from "./game/protagonist";
 import { listStoryProgress, loadStoryProgress, MAX_SAVE_SLOTS, saveStoryProgress } from "./game/save";
 import { initialChapterId, storyRegistry } from "./game/story";
-import type { ProtagonistGender, StorySaveData } from "./game/types";
+import type { ProtagonistGender, ReaderSettings, StorySaveData } from "./game/types";
 
-type AppScreen = "title" | "story";
+type AppScreen = "title" | "protagonist-select" | "story";
+type StoryOverlay = "history" | "settings" | "save" | "load" | null;
 
 function App() {
   const [screen, setScreen] = useState<AppScreen>("title");
   const [selectedGender, setSelectedGender] = useState<ProtagonistGender>("female");
   const [currentChapterId, setCurrentChapterId] = useState(initialChapterId);
+  const [activeOverlay, setActiveOverlay] = useState<StoryOverlay>(null);
+  const [settings, setSettings] = useState<ReaderSettings>(() => loadReaderSettings());
   const [selectedSlot, setSelectedSlot] = useState(1);
   const [saveSlots, setSaveSlots] = useState<StorySaveData[]>(() => listStoryProgress());
   const [pendingLoad, setPendingLoad] = useState<StorySaveData | null>(null);
   const [saveStatus, setSaveStatus] = useState<string>("");
   const chapter = storyRegistry[currentChapterId];
   const engine = useStoryEngine(chapter);
-  const speakerName =
-    engine.currentCharacter?.id === "protagonist"
-      ? engine.protagonist.displayName
-      : engine.currentCharacter?.name;
-  const speakerTitle =
-    engine.currentCharacter?.id === "protagonist"
-      ? engine.protagonist.title
-      : engine.currentCharacter?.title;
   const selectedSave = saveSlots.find((entry) => entry.slotId === selectedSlot) ?? null;
   const continueLabel = selectedSave
     ? `继续游戏 · ${storyRegistry[selectedSave.chapterId]?.title ?? selectedSave.chapterId}`
     : undefined;
+
+  useEffect(() => {
+    saveReaderSettings(settings);
+  }, [settings]);
 
   useEffect(() => {
     if (!saveStatus) {
@@ -54,6 +55,7 @@ function App() {
     if (restored) {
       setSelectedGender(pendingLoad.state.protagonist.gender);
       setScreen("story");
+      setActiveOverlay(null);
       setSaveStatus(`已读取 ${pendingLoad.slotId} 号位`);
     }
 
@@ -61,7 +63,13 @@ function App() {
   }, [engine, pendingLoad]);
 
   const handleStart = () => {
+    setActiveOverlay(null);
+    setScreen("protagonist-select");
+  };
+
+  const handleConfirmProtagonist = () => {
     setCurrentChapterId(initialChapterId);
+    setActiveOverlay(null);
     engine.restart({
       protagonist: createProtagonistProfile(selectedGender),
     });
@@ -72,17 +80,20 @@ function App() {
     const snapshot = engine.createSnapshot();
     saveStoryProgress(selectedSlot, snapshot);
     setSaveSlots(listStoryProgress());
+    setActiveOverlay(null);
     setSaveStatus(`已保存到 ${selectedSlot} 号位`);
   };
 
   const handleLoad = () => {
     const snapshot = loadStoryProgress(selectedSlot);
     if (!snapshot) {
+      setActiveOverlay(null);
       setSaveStatus(`${selectedSlot} 号位为空`);
       return;
     }
 
     if (!storyRegistry[snapshot.chapterId]) {
+      setActiveOverlay(null);
       setSaveStatus("存档章节不存在");
       return;
     }
@@ -93,6 +104,7 @@ function App() {
 
   const handleReturnTitle = () => {
     setSelectedGender(engine.protagonist.gender);
+    setActiveOverlay(null);
     setScreen("title");
   };
 
@@ -103,8 +115,18 @@ function App() {
     return {
       slotId,
       label: saveEntry
-        ? `${slotId} 号位 · ${storyRegistry[saveEntry.chapterId]?.title ?? saveEntry.chapterId}`
+        ? `${slotId} 号位`
         : `${slotId} 号位 · 空`,
+      detail: saveEntry
+        ? `${storyRegistry[saveEntry.chapterId]?.title ?? saveEntry.chapterId} · ${new Date(
+            saveEntry.savedAt,
+          ).toLocaleString("zh-CN", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`
+        : "空白存档",
     };
   });
 
@@ -114,8 +136,6 @@ function App() {
         <TitleScreen
           title={chapter.title}
           subtitle={chapter.subtitle}
-          selectedGender={selectedGender}
-          onSelectGender={setSelectedGender}
           selectedSlot={selectedSlot}
           slotOptions={slotOptions}
           hasSave={Boolean(selectedSave)}
@@ -124,26 +144,50 @@ function App() {
           onSelectSlot={setSelectedSlot}
           onContinue={handleLoad}
         />
+      ) : screen === "protagonist-select" ? (
+        <ProtagonistSelectScreen
+          selectedGender={selectedGender}
+          onSelectGender={setSelectedGender}
+          onConfirm={handleConfirmProtagonist}
+          onBack={() => setScreen("title")}
+        />
       ) : (
         <StoryScreen
           chapter={engine.chapter}
           node={engine.currentNode}
           text={engine.currentText}
           choices={engine.currentChoices}
-          speakerName={speakerName}
-          speakerTitle={speakerTitle}
+          speakerName={engine.currentSpeakerName}
+          speakerTitle={engine.currentSpeakerTitle}
           background={engine.currentBackground}
           canAdvance={engine.canAdvance}
           isEnding={engine.isEnding}
           saveStatus={saveStatus}
+          settings={settings}
+          history={engine.history}
+          activeOverlay={activeOverlay}
           selectedSlot={selectedSlot}
           slotOptions={slotOptions}
           canLoad={Boolean(selectedSave)}
           onAdvance={engine.advance}
           onChoose={engine.choose}
-          onSave={handleSave}
-          onLoad={handleLoad}
+          onOpenSave={() => setActiveOverlay("save")}
+          onOpenLoad={() => setActiveOverlay("load")}
+          onOpenHistory={() => setActiveOverlay("history")}
+          onOpenSettings={() => setActiveOverlay("settings")}
+          onConfirmSave={handleSave}
+          onConfirmLoad={handleLoad}
           onSelectSlot={setSelectedSlot}
+          onChangeTextSize={(textSize) =>
+            setSettings((previousSettings) => ({ ...previousSettings, textSize }))
+          }
+          onToggleAdvanceHint={() =>
+            setSettings((previousSettings) => ({
+              ...previousSettings,
+              showAdvanceHint: !previousSettings.showAdvanceHint,
+            }))
+          }
+          onCloseOverlay={() => setActiveOverlay(null)}
           onReturnTitle={handleReturnTitle}
         />
       )}

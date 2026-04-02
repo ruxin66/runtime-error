@@ -3,6 +3,7 @@ export type BackgroundId = string;
 export type StoryNodeId = string;
 export type StoryFlagValue = string | number | boolean;
 export type ProtagonistGender = "female" | "male";
+export type ReaderTextSize = "compact" | "standard" | "large";
 
 export interface ProtagonistProfile {
   gender: ProtagonistGender;
@@ -39,6 +40,11 @@ export interface StoryTransition {
 export interface StoryState {
   flags: Record<string, StoryFlagValue>;
   protagonist: ProtagonistProfile;
+}
+
+export interface ReaderSettings {
+  textSize: ReaderTextSize;
+  showAdvanceHint: boolean;
 }
 
 export interface CharacterProfile {
@@ -106,6 +112,13 @@ export interface StorySnapshot {
 export interface StorySaveData extends StorySnapshot {
   slotId: number;
   savedAt: string;
+}
+
+export interface StoryHistoryEntry {
+  nodeId: StoryNodeId;
+  speakerName: string;
+  speakerTitle?: string;
+  text: string[];
 }
 
 export const isChoiceNode = (node: StoryNode): node is ChoiceStoryNode =>

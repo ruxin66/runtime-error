@@ -15,8 +15,8 @@ export const ChoicePanel = ({ choices, onSelect }: ChoicePanelProps) => {
           type="button"
           onClick={() => onSelect(choice.id)}
         >
-          <span className="choice-panel__index">0{index + 1}</span>
-          <span>{choice.text}</span>
+          <span className="choice-panel__index">选项 {index + 1}</span>
+          <span className="choice-panel__text">{choice.text}</span>
         </button>
       ))}
     </div>
