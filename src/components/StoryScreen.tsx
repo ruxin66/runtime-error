@@ -6,6 +6,7 @@ import {
   isEndNode,
   type BackgroundProfile,
   type StoryChapter,
+  type StoryChoice,
   type StoryNode,
 } from "../game/types";
 
@@ -16,10 +17,15 @@ interface StoryScreenProps {
   speakerName?: string;
   speakerTitle?: string;
   background: BackgroundProfile;
+  choices?: [StoryChoice, StoryChoice];
   canAdvance: boolean;
   isEnding: boolean;
+  saveStatus?: string;
+  canLoad: boolean;
   onAdvance: () => void;
   onChoose: (choiceId: string) => void;
+  onSave: () => void;
+  onLoad: () => void;
   onReturnTitle: () => void;
 }
 
@@ -30,15 +36,20 @@ export const StoryScreen = ({
   speakerName,
   speakerTitle,
   background,
+  choices,
   canAdvance,
   isEnding,
+  saveStatus,
+  canLoad,
   onAdvance,
   onChoose,
+  onSave,
+  onLoad,
   onReturnTitle,
 }: StoryScreenProps) => {
   const renderFooter = () => {
     if (isChoiceNode(node)) {
-      return <ChoicePanel choices={node.choices} onSelect={onChoose} />;
+      return choices ? <ChoicePanel choices={choices} onSelect={onChoose} /> : null;
     }
 
     if (isEnding && isEndNode(node)) {
@@ -71,15 +82,24 @@ export const StoryScreen = ({
           <p className="eyebrow">Chapter</p>
           <h1>{chapter.title}</h1>
         </div>
-        <button className="ghost-button" type="button" onClick={onReturnTitle}>
-          返回标题
-        </button>
+        <div className="story-screen__topbar-actions">
+          <button className="ghost-button" type="button" onClick={onSave}>
+            保存
+          </button>
+          <button className="ghost-button" type="button" onClick={onLoad} disabled={!canLoad}>
+            读取
+          </button>
+          <button className="ghost-button" type="button" onClick={onReturnTitle}>
+            返回标题
+          </button>
+        </div>
       </header>
 
       <BackgroundStage background={background} />
 
       <div className="story-screen__panel">
         <DialogueBox speakerName={speakerName} speakerTitle={speakerTitle} text={text} />
+        {saveStatus ? <p className="story-screen__save-status">{saveStatus}</p> : null}
         {renderFooter()}
       </div>
     </section>

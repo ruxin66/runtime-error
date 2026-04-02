@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createProtagonistProfile, createTextTemplateMap } from "../protagonist";
 import {
   isChoiceNode,
   isLinearNode,
   type BackgroundProfile,
   type CharacterProfile,
+  type ProtagonistProfile,
   type StoryChapter,
   type StoryCondition,
   type StoryEffect,
+  type StoryChoice,
+  type StorySnapshot,
   type StoryState,
   type StoryTransition,
   type StoryNode,
@@ -15,8 +19,29 @@ import {
 const normalizeText = (text: StoryNode["text"]): string[] =>
   Array.isArray(text) ? text : [text];
 
-const cloneState = (state?: StoryState): StoryState => ({
-  flags: { ...(state?.flags ?? {}) },
+const cloneState = (
+  state?: StoryState,
+  overrides?: Partial<Pick<StoryState, "flags" | "protagonist">>,
+): StoryState => ({
+  flags: { ...(state?.flags ?? {}), ...(overrides?.flags ?? {}) },
+  protagonist:
+    overrides?.protagonist ?? state?.protagonist ?? createProtagonistProfile("female"),
+});
+
+const resolveTemplateString = (value: string, state: StoryState): string => {
+  const templateMap = createTextTemplateMap(state);
+
+  return value.replace(/\{\{(\w+)\}\}/g, (fullMatch, token: string) => {
+    return templateMap[token] ?? fullMatch;
+  });
+};
+
+const resolveText = (text: StoryNode["text"], state: StoryState): string[] =>
+  normalizeText(text).map((paragraph) => resolveTemplateString(paragraph, state));
+
+const resolveChoiceText = (choice: StoryChoice, state: StoryState): StoryChoice => ({
+  ...choice,
+  text: resolveTemplateString(choice.text, state),
 });
 
 const matchesCondition = (
@@ -69,7 +94,10 @@ const applyEffects = (state: StoryState, effects?: StoryEffect[]): StoryState =>
     }
   });
 
-  return { flags: nextFlags };
+  return {
+    ...state,
+    flags: nextFlags,
+  };
 };
 
 const validateChapter = (chapter: StoryChapter) => {
@@ -117,11 +145,24 @@ export const useStoryEngine = (chapter: StoryChapter) => {
 
   useMemo(() => validateChapter(chapter), [chapter]);
 
+  useEffect(() => {
+    appliedEnterEffectsRef.current = null;
+    setCurrentNodeId(chapter.startId);
+    setState(cloneState(chapter.initialState));
+  }, [chapter.id]);
+
   const currentNode = chapter.nodes[currentNodeId];
   const currentCharacter: CharacterProfile | undefined = currentNode.speakerId
     ? chapter.characters[currentNode.speakerId]
     : undefined;
   const currentBackground: BackgroundProfile = chapter.backgrounds[currentNode.backgroundId];
+  const currentChoices = isChoiceNode(currentNode)
+    ? (currentNode.choices.map((choice) => resolveChoiceText(choice, state)) as [
+        StoryChoice,
+        StoryChoice,
+      ])
+    : undefined;
+  const protagonist: ProtagonistProfile = state.protagonist;
 
   useEffect(() => {
     if (!currentNode.enterEffects?.length) {
@@ -160,18 +201,37 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     setCurrentNodeId(selectedChoice.nextId);
   };
 
-  const restart = () => {
+  const restart = (overrides?: Partial<Pick<StoryState, "flags" | "protagonist">>) => {
     appliedEnterEffectsRef.current = null;
     setCurrentNodeId(chapter.startId);
-    setState(cloneState(chapter.initialState));
+    setState(cloneState(chapter.initialState, overrides));
   };
+
+  const restore = (snapshot: Pick<StorySnapshot, "currentNodeId" | "state">) => {
+    if (!chapter.nodes[snapshot.currentNodeId]) {
+      return false;
+    }
+
+    appliedEnterEffectsRef.current = null;
+    setCurrentNodeId(snapshot.currentNodeId);
+    setState(cloneState(snapshot.state));
+    return true;
+  };
+
+  const createSnapshot = (): StorySnapshot => ({
+    chapterId: chapter.id,
+    currentNodeId,
+    state: cloneState(state),
+  });
 
   return {
     chapter,
     currentNode,
     currentCharacter,
     currentBackground,
-    currentText: normalizeText(currentNode.text),
+    currentText: resolveText(currentNode.text, state),
+    currentChoices,
+    protagonist,
     state,
     canAdvance: isLinearNode(currentNode),
     hasChoices: isChoiceNode(currentNode),
@@ -179,5 +239,7 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     advance,
     choose,
     restart,
+    restore,
+    createSnapshot,
   };
 };

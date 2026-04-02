@@ -2,6 +2,17 @@ export type CharacterId = string;
 export type BackgroundId = string;
 export type StoryNodeId = string;
 export type StoryFlagValue = string | number | boolean;
+export type ProtagonistGender = "female" | "male";
+
+export interface ProtagonistProfile {
+  gender: ProtagonistGender;
+  displayName: string;
+  title: string;
+  pronoun: string;
+  possessive: string;
+  appearance: string;
+  servicePersona: string;
+}
 
 export interface StoryCondition {
   key: string;
@@ -27,6 +38,7 @@ export interface StoryTransition {
 
 export interface StoryState {
   flags: Record<string, StoryFlagValue>;
+  protagonist: ProtagonistProfile;
 }
 
 export interface CharacterProfile {
@@ -83,6 +95,16 @@ export interface StoryChapter {
   characters: Record<CharacterId, CharacterProfile>;
   backgrounds: Record<BackgroundId, BackgroundProfile>;
   nodes: Record<StoryNodeId, StoryNode>;
+}
+
+export interface StorySnapshot {
+  chapterId: string;
+  currentNodeId: StoryNodeId;
+  state: StoryState;
+}
+
+export interface StorySaveData extends StorySnapshot {
+  savedAt: string;
 }
 
 export const isChoiceNode = (node: StoryNode): node is ChoiceStoryNode =>

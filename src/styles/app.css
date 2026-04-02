@@ -55,6 +55,14 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.primary-button:disabled,
+.ghost-button:disabled,
+.selector-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .title-screen,
 .story-screen {
   min-height: 100vh;
@@ -100,6 +108,40 @@ body {
   color: rgba(248, 242, 234, 0.78);
 }
 
+.title-screen__selector {
+  margin-bottom: 1.5rem;
+}
+
+.title-screen__selector-label {
+  margin-bottom: 0.65rem;
+  color: rgba(248, 242, 234, 0.68);
+}
+
+.title-screen__selector-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.selector-button {
+  padding: 0.8rem 1rem;
+  color: #f8f2ea;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+
+.selector-button.is-active {
+  border-color: rgba(216, 181, 123, 0.8);
+  background: rgba(216, 181, 123, 0.18);
+}
+
+.title-screen__cta {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
 .story-screen {
   display: grid;
   grid-template-rows: auto minmax(320px, 1fr) auto;
@@ -126,6 +168,12 @@ body {
 
 .story-screen__topbar h1 {
   font-size: 1.5rem;
+}
+
+.story-screen__topbar-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .background-stage {
@@ -165,6 +213,11 @@ body {
 
 .story-screen__panel {
   padding: 1.5rem;
+}
+
+.story-screen__save-status {
+  margin-top: 1rem;
+  color: rgba(216, 181, 123, 0.92);
 }
 
 .dialogue-box {

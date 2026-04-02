@@ -1,6 +1,7 @@
 import { storyBackgrounds } from "../catalog/backgrounds";
 import { storyCharacters } from "../catalog/characters";
 import { choice, defineChapter, ending, line } from "../chapterTools";
+import { createProtagonistProfile } from "../../protagonist";
 
 export const prologueChapter = defineChapter({
   id: "prologue",
@@ -13,6 +14,7 @@ export const prologueChapter = defineChapter({
       geminiAffinity: 0,
       replyStyle: "unknown",
     },
+    protagonist: createProtagonistProfile("female"),
   },
   characters: {
     protagonist: storyCharacters.protagonist,
@@ -42,7 +44,7 @@ export const prologueChapter = defineChapter({
       "alley",
       [
         "绕到第七圈的时候，他们终于发现角落里缩着个人。",
-        "领头的那位单手把主角拎起来，像拎一只误入巢穴的小鸡仔。",
+        "领头的那位单手把{{playerPronoun}}拎起来，像拎一只误入巢穴的小鸡仔。",
       ],
       "alley-questions",
       "riderLeader",
@@ -72,7 +74,7 @@ export const prologueChapter = defineChapter({
       "kitchen",
       [
         "老板把主角按在镜子前，飞快给 ta 套上红色围裙和圆帽。",
-        "等主角回过神，镜子里已经站着一个像中华小厨娘一样的服务员。",
+        "等主角回过神，镜子里已经站着一个像{{playerServicePersona}}一样的服务员。",
       ],
       "storefront-observe",
       "canteenBoss",
@@ -81,7 +83,7 @@ export const prologueChapter = defineChapter({
       "storefront-observe",
       "storefront",
       [
-        "主角端着叉烧饭靠在门边，觉得这一切都荒谬得像某个劣质全息剧。",
+        "{{playerAppearance}}端着叉烧饭靠在门边，觉得这一切都荒谬得像某个劣质全息剧。",
         "就在这时，两个戴着墨镜和金色假发的客人推门走了进来。",
       ],
       "table-suspicion",
@@ -180,7 +182,7 @@ export const prologueChapter = defineChapter({
       "table",
       [
         "Aries 像是被这份顶嘴取悦了，眼神里终于露出一点近似欣赏的东西。",
-        "Gemini 则偏过头，笑着评价主角像一把刚拆封的黑色小刀。",
+        "Gemini 则偏过头，笑着评价{{playerPronoun}}像一把刚拆封的黑色小刀。",
       ],
       "prologue-end",
       "gemini",
@@ -189,7 +191,7 @@ export const prologueChapter = defineChapter({
       "assessment-wry",
       "table",
       [
-        "Gemini 用指节轻轻敲了敲杯沿，说这孩子的脑子转得比十三区大多数人快。",
+        "Gemini 用指节轻轻敲了敲杯沿，说{{playerPronoun}}的脑子转得比十三区大多数人快。",
         "Aries 没反驳，只是把那张支付码重新推近了一寸。",
       ],
       "prologue-end",
