@@ -104,6 +104,7 @@ export interface StorySnapshot {
 }
 
 export interface StorySaveData extends StorySnapshot {
+  slotId: number;
   savedAt: string;
 }
 

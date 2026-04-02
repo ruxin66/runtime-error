@@ -1,13 +1,21 @@
 import type { ProtagonistGender } from "../game/types";
 
+interface SaveSlotOption {
+  slotId: number;
+  label: string;
+}
+
 interface TitleScreenProps {
   title: string;
   subtitle: string;
   selectedGender: ProtagonistGender;
   onSelectGender: (gender: ProtagonistGender) => void;
+  selectedSlot: number;
+  slotOptions: SaveSlotOption[];
   hasSave: boolean;
   continueLabel?: string;
   onStart: () => void;
+  onSelectSlot: (slotId: number) => void;
   onContinue: () => void;
 }
 
@@ -16,9 +24,12 @@ export const TitleScreen = ({
   subtitle,
   selectedGender,
   onSelectGender,
+  selectedSlot,
+  slotOptions,
   hasSave,
   continueLabel,
   onStart,
+  onSelectSlot,
   onContinue,
 }: TitleScreenProps) => {
   return (
@@ -45,6 +56,21 @@ export const TitleScreen = ({
             >
               余闯（他）
             </button>
+          </div>
+        </div>
+        <div className="title-screen__selector">
+          <p className="title-screen__selector-label">存档位</p>
+          <div className="title-screen__selector-actions">
+            {slotOptions.map((slot) => (
+              <button
+                key={slot.slotId}
+                className={selectedSlot === slot.slotId ? "selector-button is-active" : "selector-button"}
+                type="button"
+                onClick={() => onSelectSlot(slot.slotId)}
+              >
+                {slot.label}
+              </button>
+            ))}
           </div>
         </div>
         <div className="title-screen__cta">

@@ -10,6 +10,11 @@ import {
   type StoryNode,
 } from "../game/types";
 
+interface SaveSlotOption {
+  slotId: number;
+  label: string;
+}
+
 interface StoryScreenProps {
   chapter: StoryChapter;
   node: StoryNode;
@@ -21,11 +26,14 @@ interface StoryScreenProps {
   canAdvance: boolean;
   isEnding: boolean;
   saveStatus?: string;
+  selectedSlot: number;
+  slotOptions: SaveSlotOption[];
   canLoad: boolean;
   onAdvance: () => void;
   onChoose: (choiceId: string) => void;
   onSave: () => void;
   onLoad: () => void;
+  onSelectSlot: (slotId: number) => void;
   onReturnTitle: () => void;
 }
 
@@ -40,11 +48,14 @@ export const StoryScreen = ({
   canAdvance,
   isEnding,
   saveStatus,
+  selectedSlot,
+  slotOptions,
   canLoad,
   onAdvance,
   onChoose,
   onSave,
   onLoad,
+  onSelectSlot,
   onReturnTitle,
 }: StoryScreenProps) => {
   const renderFooter = () => {
@@ -83,6 +94,18 @@ export const StoryScreen = ({
           <h1>{chapter.title}</h1>
         </div>
         <div className="story-screen__topbar-actions">
+          <div className="story-screen__slot-actions">
+            {slotOptions.map((slot) => (
+              <button
+                key={slot.slotId}
+                className={selectedSlot === slot.slotId ? "selector-button is-active" : "selector-button"}
+                type="button"
+                onClick={() => onSelectSlot(slot.slotId)}
+              >
+                {slot.slotId} 号位
+              </button>
+            ))}
+          </div>
           <button className="ghost-button" type="button" onClick={onSave}>
             保存
           </button>

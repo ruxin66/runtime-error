@@ -3,7 +3,7 @@ import { StoryScreen } from "./components/StoryScreen";
 import { TitleScreen } from "./components/TitleScreen";
 import { useStoryEngine } from "./game/engine/useStoryEngine";
 import { createProtagonistProfile } from "./game/protagonist";
-import { loadStoryProgress, saveStoryProgress } from "./game/save";
+import { listStoryProgress, loadStoryProgress, MAX_SAVE_SLOTS, saveStoryProgress } from "./game/save";
 import { initialChapterId, storyRegistry } from "./game/story";
 import type { ProtagonistGender, StorySaveData } from "./game/types";
 
@@ -13,7 +13,8 @@ function App() {
   const [screen, setScreen] = useState<AppScreen>("title");
   const [selectedGender, setSelectedGender] = useState<ProtagonistGender>("female");
   const [currentChapterId, setCurrentChapterId] = useState(initialChapterId);
-  const [saveData, setSaveData] = useState<StorySaveData | null>(() => loadStoryProgress());
+  const [selectedSlot, setSelectedSlot] = useState(1);
+  const [saveSlots, setSaveSlots] = useState<StorySaveData[]>(() => listStoryProgress());
   const [pendingLoad, setPendingLoad] = useState<StorySaveData | null>(null);
   const [saveStatus, setSaveStatus] = useState<string>("");
   const chapter = storyRegistry[currentChapterId];
@@ -26,8 +27,9 @@ function App() {
     engine.currentCharacter?.id === "protagonist"
       ? engine.protagonist.title
       : engine.currentCharacter?.title;
-  const continueLabel = saveData
-    ? `继续游戏 · ${storyRegistry[saveData.chapterId]?.title ?? saveData.chapterId}`
+  const selectedSave = saveSlots.find((entry) => entry.slotId === selectedSlot) ?? null;
+  const continueLabel = selectedSave
+    ? `继续游戏 · ${storyRegistry[selectedSave.chapterId]?.title ?? selectedSave.chapterId}`
     : undefined;
 
   useEffect(() => {
@@ -52,7 +54,7 @@ function App() {
     if (restored) {
       setSelectedGender(pendingLoad.state.protagonist.gender);
       setScreen("story");
-      setSaveStatus("已读取存档");
+      setSaveStatus(`已读取 ${pendingLoad.slotId} 号位`);
     }
 
     setPendingLoad(null);
@@ -68,14 +70,15 @@ function App() {
 
   const handleSave = () => {
     const snapshot = engine.createSnapshot();
-    saveStoryProgress(snapshot);
-    setSaveData(loadStoryProgress());
-    setSaveStatus("已保存进度");
+    saveStoryProgress(selectedSlot, snapshot);
+    setSaveSlots(listStoryProgress());
+    setSaveStatus(`已保存到 ${selectedSlot} 号位`);
   };
 
   const handleLoad = () => {
-    const snapshot = loadStoryProgress();
+    const snapshot = loadStoryProgress(selectedSlot);
     if (!snapshot) {
+      setSaveStatus(`${selectedSlot} 号位为空`);
       return;
     }
 
@@ -93,6 +96,18 @@ function App() {
     setScreen("title");
   };
 
+  const slotOptions = Array.from({ length: MAX_SAVE_SLOTS }, (_, index) => {
+    const slotId = index + 1;
+    const saveEntry = saveSlots.find((entry) => entry.slotId === slotId);
+
+    return {
+      slotId,
+      label: saveEntry
+        ? `${slotId} 号位 · ${storyRegistry[saveEntry.chapterId]?.title ?? saveEntry.chapterId}`
+        : `${slotId} 号位 · 空`,
+    };
+  });
+
   return (
     <main className="app-shell">
       {screen === "title" ? (
@@ -101,9 +116,12 @@ function App() {
           subtitle={chapter.subtitle}
           selectedGender={selectedGender}
           onSelectGender={setSelectedGender}
-          hasSave={Boolean(saveData)}
+          selectedSlot={selectedSlot}
+          slotOptions={slotOptions}
+          hasSave={Boolean(selectedSave)}
           continueLabel={continueLabel}
           onStart={handleStart}
+          onSelectSlot={setSelectedSlot}
           onContinue={handleLoad}
         />
       ) : (
@@ -118,11 +136,14 @@ function App() {
           canAdvance={engine.canAdvance}
           isEnding={engine.isEnding}
           saveStatus={saveStatus}
-          canLoad={Boolean(saveData)}
+          selectedSlot={selectedSlot}
+          slotOptions={slotOptions}
+          canLoad={Boolean(selectedSave)}
           onAdvance={engine.advance}
           onChoose={engine.choose}
           onSave={handleSave}
           onLoad={handleLoad}
+          onSelectSlot={setSelectedSlot}
           onReturnTitle={handleReturnTitle}
         />
       )}
