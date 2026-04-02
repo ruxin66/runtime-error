@@ -2,9 +2,13 @@ import type {
   BackgroundId,
   CharacterId,
   StoryChapter,
+  StoryEffect,
   StoryChoice,
-  StoryNode,
+  LinearStoryNode,
+  EndStoryNode,
+  ChoiceStoryNode,
   StoryNodeId,
+  StoryTransition,
 } from "../types";
 
 export const defineChapter = (chapter: StoryChapter) => chapter;
@@ -13,15 +17,17 @@ export const line = (
   id: StoryNodeId,
   backgroundId: BackgroundId,
   text: string | string[],
-  nextId: StoryNodeId,
+  next: StoryNodeId | StoryTransition,
   speakerId?: CharacterId,
-): StoryNode => ({
+  enterEffects?: StoryEffect[],
+): LinearStoryNode => ({
   id,
   kind: "line",
   backgroundId,
   speakerId,
   text,
-  nextId,
+  next: typeof next === "string" ? { fallbackId: next } : next,
+  enterEffects,
 });
 
 export const choice = (
@@ -30,7 +36,7 @@ export const choice = (
   text: string | string[],
   choices: [StoryChoice, StoryChoice],
   speakerId?: CharacterId,
-): StoryNode => ({
+): ChoiceStoryNode => ({
   id,
   kind: "choice",
   backgroundId,
@@ -45,11 +51,13 @@ export const ending = (
   text: string | string[],
   endLabel?: string,
   speakerId?: CharacterId,
-): StoryNode => ({
+  enterEffects?: StoryEffect[],
+): EndStoryNode => ({
   id,
   kind: "end",
   backgroundId,
   speakerId,
   text,
   endLabel,
+  enterEffects,
 });

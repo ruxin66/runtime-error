@@ -1,15 +1,76 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   isChoiceNode,
   isLinearNode,
   type BackgroundProfile,
   type CharacterProfile,
   type StoryChapter,
+  type StoryCondition,
+  type StoryEffect,
+  type StoryState,
+  type StoryTransition,
   type StoryNode,
 } from "../types";
 
 const normalizeText = (text: StoryNode["text"]): string[] =>
   Array.isArray(text) ? text : [text];
+
+const cloneState = (state?: StoryState): StoryState => ({
+  flags: { ...(state?.flags ?? {}) },
+});
+
+const matchesCondition = (
+  condition: StoryCondition,
+  flags: StoryState["flags"],
+): boolean => {
+  const currentValue = flags[condition.key];
+  const operator = condition.operator ?? "truthy";
+
+  switch (operator) {
+    case "equals":
+      return currentValue === condition.value;
+    case "notEquals":
+      return currentValue !== condition.value;
+    case "truthy":
+      return Boolean(currentValue);
+    case "falsy":
+      return !currentValue;
+    default:
+      return false;
+  }
+};
+
+const resolveTransition = (transition: StoryTransition, state: StoryState): string => {
+  const matchedBranch = transition.branches?.find((branch) =>
+    branch.conditions.every((condition) => matchesCondition(condition, state.flags)),
+  );
+
+  return matchedBranch?.nextId ?? transition.fallbackId;
+};
+
+const applyEffects = (state: StoryState, effects?: StoryEffect[]): StoryState => {
+  if (!effects?.length) {
+    return state;
+  }
+
+  const nextFlags = { ...state.flags };
+
+  effects.forEach((effect) => {
+    if (effect.type === "set") {
+      nextFlags[effect.key] = effect.value;
+      return;
+    }
+
+    if (effect.type === "increment") {
+      const currentValue = nextFlags[effect.key];
+      const safeCurrent = typeof currentValue === "number" ? currentValue : 0;
+      const safeDelta = typeof effect.value === "number" ? effect.value : 0;
+      nextFlags[effect.key] = safeCurrent + safeDelta;
+    }
+  });
+
+  return { flags: nextFlags };
+};
 
 const validateChapter = (chapter: StoryChapter) => {
   if (!chapter.nodes[chapter.startId]) {
@@ -25,8 +86,16 @@ const validateChapter = (chapter: StoryChapter) => {
       throw new Error(`Missing speaker "${node.speakerId}" for node "${node.id}"`);
     }
 
-    if (isLinearNode(node) && !chapter.nodes[node.nextId]) {
-      throw new Error(`Missing next node "${node.nextId}" for node "${node.id}"`);
+    if (isLinearNode(node)) {
+      if (!chapter.nodes[node.next.fallbackId]) {
+        throw new Error(`Missing next node "${node.next.fallbackId}" for node "${node.id}"`);
+      }
+
+      node.next.branches?.forEach((branch) => {
+        if (!chapter.nodes[branch.nextId]) {
+          throw new Error(`Missing branch node "${branch.nextId}" for node "${node.id}"`);
+        }
+      });
     }
 
     if (isChoiceNode(node)) {
@@ -43,6 +112,8 @@ const validateChapter = (chapter: StoryChapter) => {
 
 export const useStoryEngine = (chapter: StoryChapter) => {
   const [currentNodeId, setCurrentNodeId] = useState(chapter.startId);
+  const [state, setState] = useState<StoryState>(() => cloneState(chapter.initialState));
+  const appliedEnterEffectsRef = useRef<string | null>(null);
 
   useMemo(() => validateChapter(chapter), [chapter]);
 
@@ -52,12 +123,26 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     : undefined;
   const currentBackground: BackgroundProfile = chapter.backgrounds[currentNode.backgroundId];
 
+  useEffect(() => {
+    if (!currentNode.enterEffects?.length) {
+      return;
+    }
+
+    if (appliedEnterEffectsRef.current === currentNode.id) {
+      return;
+    }
+
+    appliedEnterEffectsRef.current = currentNode.id;
+    setState((previousState) => applyEffects(previousState, currentNode.enterEffects));
+  }, [currentNode]);
+
   const advance = () => {
     if (!isLinearNode(currentNode)) {
       return;
     }
 
-    setCurrentNodeId(currentNode.nextId);
+    appliedEnterEffectsRef.current = null;
+    setCurrentNodeId(resolveTransition(currentNode.next, state));
   };
 
   const choose = (choiceId: string) => {
@@ -70,11 +155,15 @@ export const useStoryEngine = (chapter: StoryChapter) => {
       return;
     }
 
+    setState((previousState) => applyEffects(previousState, selectedChoice.effects));
+    appliedEnterEffectsRef.current = null;
     setCurrentNodeId(selectedChoice.nextId);
   };
 
   const restart = () => {
+    appliedEnterEffectsRef.current = null;
     setCurrentNodeId(chapter.startId);
+    setState(cloneState(chapter.initialState));
   };
 
   return {
@@ -83,6 +172,7 @@ export const useStoryEngine = (chapter: StoryChapter) => {
     currentCharacter,
     currentBackground,
     currentText: normalizeText(currentNode.text),
+    state,
     canAdvance: isLinearNode(currentNode),
     hasChoices: isChoiceNode(currentNode),
     isEnding: currentNode.kind === "end",

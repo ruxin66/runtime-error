@@ -1,6 +1,33 @@
 export type CharacterId = string;
 export type BackgroundId = string;
 export type StoryNodeId = string;
+export type StoryFlagValue = string | number | boolean;
+
+export interface StoryCondition {
+  key: string;
+  operator?: "equals" | "notEquals" | "truthy" | "falsy";
+  value?: StoryFlagValue;
+}
+
+export interface StoryEffect {
+  key: string;
+  type: "set" | "increment";
+  value: StoryFlagValue;
+}
+
+export interface StoryBranch {
+  nextId: StoryNodeId;
+  conditions: StoryCondition[];
+}
+
+export interface StoryTransition {
+  fallbackId: StoryNodeId;
+  branches?: StoryBranch[];
+}
+
+export interface StoryState {
+  flags: Record<string, StoryFlagValue>;
+}
 
 export interface CharacterProfile {
   id: CharacterId;
@@ -19,6 +46,7 @@ export interface StoryChoice {
   id: string;
   text: string;
   nextId: StoryNodeId;
+  effects?: StoryEffect[];
 }
 
 interface StoryNodeBase {
@@ -26,11 +54,12 @@ interface StoryNodeBase {
   text: string | string[];
   backgroundId: BackgroundId;
   speakerId?: CharacterId;
+  enterEffects?: StoryEffect[];
 }
 
 export interface LinearStoryNode extends StoryNodeBase {
   kind: "line";
-  nextId: StoryNodeId;
+  next: StoryTransition;
 }
 
 export interface ChoiceStoryNode extends StoryNodeBase {
@@ -50,6 +79,7 @@ export interface StoryChapter {
   title: string;
   subtitle: string;
   startId: StoryNodeId;
+  initialState?: StoryState;
   characters: Record<CharacterId, CharacterProfile>;
   backgrounds: Record<BackgroundId, BackgroundProfile>;
   nodes: Record<StoryNodeId, StoryNode>;

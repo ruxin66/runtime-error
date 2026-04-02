@@ -7,6 +7,13 @@ export const prologueChapter = defineChapter({
   title: "Runtime Error",
   subtitle: "序章：十三区的叉烧饭",
   startId: "alley-awakening",
+  initialState: {
+    flags: {
+      ariesAffinity: 0,
+      geminiAffinity: 0,
+      replyStyle: "unknown",
+    },
+  },
   characters: {
     protagonist: storyCharacters.protagonist,
     riderLeader: storyCharacters.riderLeader,
@@ -109,11 +116,19 @@ export const prologueChapter = defineChapter({
           id: "refuse",
           text: "我只是一个卖叉烧饭的，不卖。",
           nextId: "choice-refuse",
+          effects: [
+            { key: "replyStyle", type: "set", value: "defiant" },
+            { key: "ariesAffinity", type: "increment", value: 1 },
+          ],
         },
         {
           id: "cash-only",
           text: "这里没有网络，所以请给我现金。",
           nextId: "choice-cash",
+          effects: [
+            { key: "replyStyle", type: "set", value: "wry" },
+            { key: "geminiAffinity", type: "increment", value: 1 },
+          ],
         },
       ],
       "protagonist",
@@ -145,15 +160,57 @@ export const prologueChapter = defineChapter({
         "Aries 站起身，低声说：你不该出现在这里。",
         "Gemini 接上后半句：所以现在，你最好跟我们谈谈。",
       ],
-      "prologue-end",
+      {
+        fallbackId: "assessment-neutral",
+        branches: [
+          {
+            nextId: "assessment-defiant",
+            conditions: [{ key: "replyStyle", operator: "equals", value: "defiant" }],
+          },
+          {
+            nextId: "assessment-wry",
+            conditions: [{ key: "replyStyle", operator: "equals", value: "wry" }],
+          },
+        ],
+      },
       "aries",
+    ),
+    "assessment-defiant": line(
+      "assessment-defiant",
+      "table",
+      [
+        "Aries 像是被这份顶嘴取悦了，眼神里终于露出一点近似欣赏的东西。",
+        "Gemini 则偏过头，笑着评价主角像一把刚拆封的黑色小刀。",
+      ],
+      "prologue-end",
+      "gemini",
+    ),
+    "assessment-wry": line(
+      "assessment-wry",
+      "table",
+      [
+        "Gemini 用指节轻轻敲了敲杯沿，说这孩子的脑子转得比十三区大多数人快。",
+        "Aries 没反驳，只是把那张支付码重新推近了一寸。",
+      ],
+      "prologue-end",
+      "gemini",
+    ),
+    "assessment-neutral": line(
+      "assessment-neutral",
+      "table",
+      [
+        "两人短暂交换了一个眼神，像是在用某种主角无法理解的方式完成判断。",
+        "下一秒，餐馆门口的夜风灌进来，吹得主角后颈发凉。",
+      ],
+      "prologue-end",
+      "protagonist",
     ),
     "prologue-end": ending(
       "prologue-end",
       "table",
       [
         "门外十三区的霓虹晃进来，把两人的影子拉得很长。",
-        "序章到这里结束，下一段将从主角是否跟他们离开开始。",
+        "序章到这里结束。现在这套引擎已经能根据你的选择记录状态，并在后续节点里做条件跳转。",
       ],
       "返回标题",
     ),
